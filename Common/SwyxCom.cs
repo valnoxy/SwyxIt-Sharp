@@ -118,28 +118,7 @@ namespace SwyxSharp.Common
 
             internal static void ListAllPeers(ClientLineMgrClass client)
             {
-                object appearancesObj = client.GetUserPresenceInfo();
-                IEnumerable appearanceCollection = appearancesObj as IEnumerable;
-
-                if (appearanceCollection != null)
-                {
-                    foreach (object item in appearanceCollection)
-                    {
-                        var appearance = item as IUserAppearance;
-
-                        if (appearance != null)
-                        {
-                            Logging.Log($"Name: {appearance.UserName}");
-                            Logging.Log($"Chat-ID: {appearance.ChatUserId}");
-                            Logging.Log($"Avatar: {appearance.AvatarBitmapPath}");
-                            Logging.Log("--------------------------------");
-                        }
-                    }
-                }
-                else
-                {
-                    Logging.Log("Konnte UserAppearances nicht als Liste laden.", Logging.LogLevel.ERROR);
-                }
+                // TODO: Implement it lol
             }
         }
     }
