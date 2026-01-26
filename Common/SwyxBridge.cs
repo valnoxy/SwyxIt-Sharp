@@ -2,13 +2,18 @@
 {
     public class SwyxBridge
     {
-        internal static SwyxClient _swyxClient;
+        internal static SwyxClient? SwyxClient;
         /// <summary>
         ///  Initialize Swyx API
         /// </summary>
         public static void Initialize()
         {
-            _swyxClient = new SwyxClient();
+            SwyxClient = new SwyxClient();
+        }
+
+        public static void Shutdown()
+        {
+            SwyxClient.Shutdown();
         }
     }
 }

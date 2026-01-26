@@ -17,12 +17,12 @@ namespace SwyxSharp.UserInterface
 
         private void CallForward_Click(object sender, RoutedEventArgs e)
         {
-            SwyxBridge._swyxClient.OpenDialog(SwyxClient.UserInterface.DialogId.CallForward + 1);
+            SwyxBridge.SwyxClient?.OpenDialog(SwyxClient.UserInterface.DialogId.CallForward + 1);
         }
 
         private void CallForward_RightClick(object sender, MouseButtonEventArgs e)
         {
-            SwyxBridge._swyxClient.OpenDialog(SwyxClient.UserInterface.DialogId.CallForward);
+            SwyxBridge.SwyxClient?.OpenDialog(SwyxClient.UserInterface.DialogId.CallForward);
         }
     }
 }

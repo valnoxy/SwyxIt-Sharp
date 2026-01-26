@@ -28,14 +28,14 @@ namespace SwyxSharp.UserInterface
 
         private void InitCards()
         {
-            var data = SwyxBridge._swyxClient.GetSpeedDials();
+            var data = SwyxBridge.SwyxClient.GetSpeedDials();
             Cards = new List<Card>();
             foreach (var item in data)
             {
                 Cards.Add(new Card
                 {
                     Name = item.Name,
-                    Status = "item.Status",
+                    Status = item.State,
                     Picutre = item.Picture
                 });
             }

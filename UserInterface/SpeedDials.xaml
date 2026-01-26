@@ -45,7 +45,7 @@
                                     <ui:TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16"/>
                                     <TextBlock Text="{Binding Status}"/>
                                 </StackPanel>
-                                <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Symbol=MoreVertical24}" 
+                                <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Symbol=MoreVertical24}" Padding="0" 
                                            FontSize="18" VerticalAlignment="Top" HorizontalAlignment="Right"/>
                             </Grid>
                         </ui:Card>
