@@ -11,7 +11,11 @@ namespace SwyxSharp
         private void Application_Startup(object sender, StartupEventArgs e)
         {
             // Prepare Swyx API
-            Logging.Initialize();
+            var useDebug = false;
+#if DEBUG
+            useDebug = true;
+#endif
+            Logging.Initialize(useDebug);
             Common.SwyxBridge.Initialize();
 
             // Show main window

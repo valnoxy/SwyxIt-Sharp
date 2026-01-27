@@ -15,8 +15,7 @@ namespace SwyxSharp.UserInterface
             public string Picutre { get; set; }
         }
 
-        public static List<Card>? Cards;
-        public List<Card>? CardList => Cards;
+        public List<Card>? Cards;
 
         public SpeedDials()
         {
@@ -24,12 +23,19 @@ namespace SwyxSharp.UserInterface
             this.DataContext = this;
 
             InitCards();
+
+            // Subscribe to state change events
+            SwyxBridge.SwyxClient?.UserStateChanged += (s) =>
+            {
+                // ignore 's'
+                Dispatcher.Invoke(InitCards);
+            };
         }
 
         private void InitCards()
         {
-            var data = SwyxBridge.SwyxClient.GetSpeedDials();
-            Cards = new List<Card>();
+            var data = SwyxBridge.SwyxClient!.GetSpeedDials();
+            Cards = [];
             foreach (var item in data)
             {
                 Cards.Add(new Card
@@ -39,6 +45,8 @@ namespace SwyxSharp.UserInterface
                     Picutre = item.Picture
                 });
             }
+
+            CardsControl.ItemsSource = Cards;
         }
 
         private void DebugLoad(object sender, RoutedEventArgs e)

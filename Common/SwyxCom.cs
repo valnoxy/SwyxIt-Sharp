@@ -1,4 +1,5 @@
-﻿using IpPbx.CLMgrLib;
+﻿using System.IO;
+using IpPbx.CLMgrLib;
 using SwyxSharp.Common.Debugging;
 
 namespace SwyxSharp.Common
@@ -6,6 +7,7 @@ namespace SwyxSharp.Common
     internal class SwyxClient
     {
         private readonly ClientLineMgrClass? _lineManager;
+        private readonly IClientConfig? _clientConfig;
         private SwyxEventsSink? _eventSink;
 
         public SwyxClient()
@@ -15,6 +17,12 @@ namespace SwyxSharp.Common
                 Logging.Log("Initializing Swyx Client API ...");
                 _lineManager = new ClientLineMgrClass();
                 _eventSink = new SwyxEventsSink();
+                _clientConfig = (IClientConfig)_lineManager.ClientConfig;
+
+                // Get some infos
+                var serverId = _clientConfig.GetUniqueServerId();
+                var licence = _clientConfig.ServerLicenceType;
+                Logging.Log($"Connected to Swyx Server ID: {serverId} | License Type: {licence}");
 
                 // Subscribe to events
                 _eventSink.Connect(_lineManager, OnLineManagerMessage);
@@ -43,10 +51,16 @@ namespace SwyxSharp.Common
             Logging.Log("Swyx Client API shut down.");
         }
 
+        #region Events
+
+        // Events for UI updates
+        public event Action<string> UserStateChanged;
+
+        // Event handler for line manager messages
         private void OnLineManagerMessage(SwyxEventsArgs e)
         {
             var enumName = Enum.GetName(typeof(CLMgrMessage), e.Msg);
-            Logging.Log($"Event {enumName} -> [Msg: {e.Msg} - Param: {e.Param}]");
+            Logging.Log($"Event {enumName} -> [Msg: {e.Msg} - Param: {e.Param}]", Logging.LogLevel.DEBUG);
             switch (e.Msg)
             {
                 case CLMgrMessage.CLMgrLineStateChangedMessage:
@@ -68,6 +82,7 @@ namespace SwyxSharp.Common
                 case CLMgrMessage.CLMgrGroupCallNotificationMessage:
                     break;
                 case CLMgrMessage.CLMgrNameKeyStateChangedMessage:
+                    UserStateChanged?.Invoke(e.Param.ToString());
                     break;
                 case CLMgrMessage.CLMgrNumberOfLinesChangedMessage:
                     break;
@@ -175,16 +190,35 @@ namespace SwyxSharp.Common
                     throw new ArgumentOutOfRangeException();
             }
         }
-
-        private void OnPresenceChanged(int iUserId, int iSiteId, string bstrUsername, int iStatus, string bstrStatusText)
-        {
-            Logging.Log($"Presence changed -> {iUserId} - {iSiteId} - {bstrUsername} - {iStatus} - {bstrStatusText}");
-        }
+        
+        #endregion
 
         public void Test()
         {
-            Logging.Log("Performing some tests ...");
-            // no tests currently
+            Logging.Log("Performing some tests ...", Logging.LogLevel.DEBUG);
+
+            // Analyze COM Object
+            var unknownObject = _clientConfig?.PbxPhoneBookEnumerator;
+            //var unknownObject = _lineManager.GetUserAppearances();
+            var comTypeName = Microsoft.VisualBasic.Information.TypeName(unknownObject);
+            Logging.Log($"COM Type name: {comTypeName}", Logging.LogLevel.DEBUG);
+
+            var data = (IDispCollection)unknownObject!;
+            var enumerator = data.GetEnumerator();
+            try
+            {
+                while (enumerator.MoveNext())
+                {
+                    var item = enumerator.Current;
+                }
+            }
+            finally
+            {
+                if (enumerator is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
         }
 
         #region User Interface
@@ -195,7 +229,14 @@ namespace SwyxSharp.Common
                 Logging.Log("ClientLineMgrClass is not initialized.", Logging.LogLevel.ERROR);
                 return [];
             }
-            var speedDials = UserInterface.GetSpeedDials(_lineManager);
+
+            if (_clientConfig == null)
+            {
+                Logging.Log("IClientConfig is not initialized.", Logging.LogLevel.ERROR);
+                return [];
+            }
+
+            var speedDials = UserInterface.GetSpeedDials(_lineManager, _clientConfig);
             return speedDials;
         }
 
@@ -243,6 +284,8 @@ namespace SwyxSharp.Common
                 public string Number { get; set; }
                 public string Picture { get; set; }
                 public string State { get; set; }
+                public int UserId { get; set; }
+                public int SiteId { get; set; }
             }
 
             /// <summary>
@@ -259,20 +302,27 @@ namespace SwyxSharp.Common
             /// Retrieves the list of configured speed dials for the specified client line manager.
             /// </summary>
             /// <param name="client">The client line manager instance from which to retrieve speed dial entries. Cannot be null.</param>
+            /// <param name="clientConfig">The IClientConfig interface from client line manager instance. Cannot be null.</param>
             /// <exception cref="ArgumentOutOfRangeException">The client has an unknown state.</exception>
             /// <returns>A list of speed dial entries associated with the client. The list will be empty if no speed dials are
             /// configured.</returns>
-            internal static List<SpeedDial> GetSpeedDials(ClientLineMgrClass client)
+            internal static List<SpeedDial> GetSpeedDials(ClientLineMgrClass client, IClientConfig clientConfig)
             {
                 var speedDials = new List<SpeedDial>();
                 client.PubGetNumberOfSpeedDials(out var a);
-                Logging.Log($"Available SpeedDials: {a}");
+                Logging.Log($"Available SpeedDials: {a}", Logging.LogLevel.DEBUG);
                 for (var i = 0; i <= a - 1; i++)
                 {
                     client.PubGetSpeedDialName(i, out var name);
                     client.PubGetSpeedDialNumber(i, out var number);
                     client.PubGetSpeedDialState(i, out var stateId);
-                    
+                    client.GetUserIdByPhoneNumber(number, out var siteId, out var userId);
+                    clientConfig.GetAvatarBitmap(siteId, userId, 0, out var pbModified, out var fileName);
+
+                    var fileCache = clientConfig.FileCacheFolder;
+                    var userAvatar = Path.Combine(fileCache, fileName);
+                    if (!File.Exists(userAvatar)) userAvatar = string.Empty;
+
                     if (string.IsNullOrEmpty(name)) continue;
 
                     var stateObj = (SpeedDialState)stateId;
@@ -288,13 +338,15 @@ namespace SwyxSharp.Common
                         _ => throw new ArgumentOutOfRangeException()
                     };
 
-                    Logging.Log($"SpeedDial {i}: {name} - {number} -> {state}");
+                    Logging.Log($"SpeedDial {i}: {name} - {number} - {state} | UserID: {userId} - SiteID: {siteId}", Logging.LogLevel.DEBUG);
                     speedDials.Add(new SpeedDial
                     {
                         Name = name,
                         Number = number,
                         State = state,
-                        Picture = string.Empty // TODO: Not implemented yet
+                        Picture = userAvatar,
+                        UserId = userId,
+                        SiteId = siteId
                     });
                 }
 

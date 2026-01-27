@@ -24,7 +24,7 @@
         </StackPanel>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding CardList}" 
+            <ItemsControl ItemsSource="{Binding Cards}" 
                           HorizontalContentAlignment="Stretch"
                           VerticalAlignment="Top"
                           Margin="-4,0,0,0"

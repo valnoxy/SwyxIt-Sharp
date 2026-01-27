@@ -24,10 +24,11 @@ namespace SwyxSharp.Common.Debugging
     {
         private static readonly string LogPath = Path.Combine(Path.GetTempPath(), "SwyxItSharp", "Logs");
         private static string? _logFile;
+        private static bool _useDebug = false;
 
-        internal enum LogLevel { INFO, ERROR, WARNING }
+        internal enum LogLevel { INFO, ERROR, WARNING, DEBUG }
 
-        public static void Initialize()
+        public static void Initialize(bool useDebug)
         {
             // Ensure the log directory exists
             if (!Directory.Exists(LogPath))
@@ -38,8 +39,10 @@ namespace SwyxSharp.Common.Debugging
             // Fetching the current log file
             _logFile = Path.Combine(LogPath, $"log_{DateTime.Now:yyyy-MM-dd}.txt");
 
+            _useDebug = useDebug;
             var version = Assembly.GetExecutingAssembly().GetName().Version!;
-            Log($"SwyxIt! Sharp {version.Major}.{version.Minor}.{version.Build} (Build {version.Revision})");
+            var debugText = useDebug ? "[Debug Build]" : "";
+            Log($"SwyxIt! Sharp {version.Major}.{version.Minor}.{version.Build} (Build {version.Revision}) {debugText}");
             Log("Logging system initialized");
 
             // Delete old log files
@@ -50,6 +53,8 @@ namespace SwyxSharp.Common.Debugging
         {
             if (string.IsNullOrEmpty(_logFile))
                 throw new Exception("Logging class not initialized!");
+
+            if (level == LogLevel.DEBUG && !_useDebug) return;
 
             // Get calling method information
             var stackTrace = new StackTrace();
