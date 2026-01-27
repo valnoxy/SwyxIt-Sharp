@@ -13,6 +13,10 @@
 # Introduction
 This project serves only as my playground for the SwyxIt Client SDK.  There will be no release and it must be compiled yourself.
 
+# Screenshot
+<img width="1325" height="831" alt="image" src="https://github.com/user-attachments/assets/2169d0aa-aa78-4e20-9929-956a4ec524a8" />
+
+
 <hr>
 <h6 align="center">© 2018 - 2026 valnoxy. Not affiliated with Enrach or Swyx.
 <br>
