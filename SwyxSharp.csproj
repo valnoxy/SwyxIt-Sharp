@@ -18,6 +18,7 @@
 
 	<ItemGroup>
 	  <None Remove="IpPbxClient.ico" />
+	  <None Remove="UserInterface\Resources\Default.png" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -28,6 +29,7 @@
 
 	<ItemGroup>
 	  <Resource Include="IpPbxClient.ico" />
+	  <Resource Include="UserInterface\Resources\Default.png" />
 	</ItemGroup>
 
 </Project>

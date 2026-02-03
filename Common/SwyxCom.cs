@@ -1,6 +1,7 @@
-﻿using System.IO;
-using IpPbx.CLMgrLib;
+﻿using IpPbx.CLMgrLib;
 using SwyxSharp.Common.Debugging;
+using System.IO;
+using System.Xml.Linq;
 
 namespace SwyxSharp.Common
 {
@@ -22,8 +23,9 @@ namespace SwyxSharp.Common
                 // Get some infos
                 var serverId = _clientConfig.GetUniqueServerId();
                 var licence = _clientConfig.ServerLicenceType;
-                Logging.Log($"Connected to Swyx Server ID: {serverId} | License Type: {licence}");
-
+                var server = _lineManager.DispGetCurrentServer;
+                Logging.Log($"Connected to Swyx Server: {server} | ID: {serverId} | License Type: {licence}");
+                
                 // Subscribe to events
                 _eventSink.Connect(_lineManager, OnLineManagerMessage);
                 
@@ -222,7 +224,7 @@ namespace SwyxSharp.Common
         }
 
         #region User Interface
-        public List<UserInterface.SpeedDial> GetSpeedDials()
+        public List<SwyxEnums.SpeedDial> GetSpeedDials()
         {
             if (_lineManager == null)
             {
@@ -244,7 +246,7 @@ namespace SwyxSharp.Common
         /// Opens the specified dialog in the user interface.
         /// </summary>
         /// <param name="dialog">The identifier of the dialog to open.</param>
-        public void OpenDialog(UserInterface.DialogId dialog)
+        public void OpenDialog(SwyxEnums.DialogId dialog)
         {
             if (_lineManager == null)
             {
@@ -258,42 +260,12 @@ namespace SwyxSharp.Common
 
         internal class UserInterface
         {
-            internal enum DialogId : uint
-            {
-                CtiSettings = 0x00000000,
-                CallForward = 0x00010000,    // Add 1 to toggle the Default Forwarding (and call up the settings dialog if the number is not set)
-                SpeedDials = 0x00020000,     // Add the speed dial ID (0 - 65535) to get a dialog for a specific button
-                UserSettings = 0x00030000,
-                LocalSettings = 0x00040000
-            }
-
-            internal enum SpeedDialState
-            {
-                Unknown = 0,                 // unknown user or external number
-                LoggedOut = 1,               // known user, not logged on to PBX
-                Online = 2,                  // known user, logged on to PBX
-                Calling = 3,                 // known user, client is in call
-                GroupCallNotification = 4,   // known user, that user currently receives a call; notification call
-                Away = 5,                    // known user, client is away
-                DoNotDisturb = 6             // known user, client is in DND
-            }
-
-            public class SpeedDial
-            {
-                public string Name { get; set; }
-                public string Number { get; set; }
-                public string Picture { get; set; }
-                public string State { get; set; }
-                public int UserId { get; set; }
-                public int SiteId { get; set; }
-            }
-
             /// <summary>
             /// Opens the specified client UI dialog for the given client instance.
             /// </summary>
             /// <param name="dialog">The identifier of the dialog to open. Specifies which UI dialog will be displayed to the client.</param>
             /// <param name="client">The client instance for which the dialog will be opened. Must not be null.</param>
-            internal static void OpenDialog(DialogId dialog, ClientLineMgrClass client)
+            internal static void OpenDialog(SwyxEnums.DialogId dialog, ClientLineMgrClass client)
             {
                 client.OpenClientUiDialog((uint)dialog);
             }
@@ -306,9 +278,9 @@ namespace SwyxSharp.Common
             /// <exception cref="ArgumentOutOfRangeException">The client has an unknown state.</exception>
             /// <returns>A list of speed dial entries associated with the client. The list will be empty if no speed dials are
             /// configured.</returns>
-            internal static List<SpeedDial> GetSpeedDials(ClientLineMgrClass client, IClientConfig clientConfig)
+            internal static List<SwyxEnums.SpeedDial> GetSpeedDials(ClientLineMgrClass client, IClientConfig clientConfig)
             {
-                var speedDials = new List<SpeedDial>();
+                var speedDials = new List<SwyxEnums.SpeedDial>();
                 client.PubGetNumberOfSpeedDials(out var a);
                 Logging.Log($"Available SpeedDials: {a}", Logging.LogLevel.DEBUG);
                 for (var i = 0; i <= a - 1; i++)
@@ -319,38 +291,54 @@ namespace SwyxSharp.Common
                     client.GetUserIdByPhoneNumber(number, out var siteId, out var userId);
                     clientConfig.GetAvatarBitmap(siteId, userId, 0, out var pbModified, out var fileName);
 
-                    var fileCache = clientConfig.FileCacheFolder;
-                    var userAvatar = Path.Combine(fileCache, fileName);
-                    if (!File.Exists(userAvatar)) userAvatar = string.Empty;
+                    var userAvatar = GetAvatarFromCache(clientConfig, fileName);
+                    if (!File.Exists(userAvatar)) userAvatar = "pack://application:,,,/UserInterface/Resources/Default.png";
 
                     if (string.IsNullOrEmpty(name)) continue;
 
-                    var stateObj = (SpeedDialState)stateId;
+                    var stateObj = (SwyxEnums.SpeedDialState)stateId;
                     var state = stateObj switch
                     {
-                        SpeedDialState.Unknown => "Unbekannt",
-                        SpeedDialState.LoggedOut => "Abgemeldet",
-                        SpeedDialState.Online => "Online",
-                        SpeedDialState.Calling => "Spricht gerade",
-                        SpeedDialState.GroupCallNotification => "In einer Konferenz",
-                        SpeedDialState.Away => "Abwesend",
-                        SpeedDialState.DoNotDisturb => "Nicht stören",
+                        SwyxEnums.SpeedDialState.Unknown => "Unbekannt",
+                        SwyxEnums.SpeedDialState.LoggedOut => "Abgemeldet",
+                        SwyxEnums.SpeedDialState.Online => "Online",
+                        SwyxEnums.SpeedDialState.Calling => "Spricht gerade",
+                        SwyxEnums.SpeedDialState.GroupCallNotification => "In einer Konferenz",
+                        SwyxEnums.SpeedDialState.Away => "Abwesend",
+                        SwyxEnums.SpeedDialState.DoNotDisturb => "Nicht stören",
                         _ => throw new ArgumentOutOfRangeException()
                     };
 
                     Logging.Log($"SpeedDial {i}: {name} - {number} - {state} | UserID: {userId} - SiteID: {siteId}", Logging.LogLevel.DEBUG);
-                    speedDials.Add(new SpeedDial
+                    speedDials.Add(new SwyxEnums.SpeedDial
                     {
                         Name = name,
                         Number = number,
                         State = state,
                         Picture = userAvatar,
                         UserId = userId,
-                        SiteId = siteId
+                        SiteId = siteId,
+                        SpeedDialState = stateObj
                     });
                 }
 
                 return speedDials;
+            }
+
+            private static string? GetAvatarFromCache(IClientConfig clientConfig, string orgFileName)
+            {
+                var fileCache = clientConfig.FileCacheFolder;
+                var doc = XDocument.Load(Path.Combine(fileCache, "cache.xml"));
+
+                var fileId = doc.Descendants("FileChacheEntry")
+                    .Where(x => (string)x.Element("m_Name") == orgFileName)
+                    .Select(x => (string)x.Element("m_FileID"))
+                    .FirstOrDefault();
+
+                var cacheFile = $"{fileId}{Path.GetExtension(orgFileName)}";
+                var filePath = Path.Combine(fileCache, cacheFile);
+
+                return filePath;
             }
         }
     }

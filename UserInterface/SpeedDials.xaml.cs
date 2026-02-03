@@ -1,5 +1,7 @@
-﻿using System.Windows;
+﻿using System.Drawing;
+using System.Windows;
 using SwyxSharp.Common;
+using Brushes = System.Windows.Media.Brushes;
 
 namespace SwyxSharp.UserInterface
 {
@@ -12,7 +14,8 @@ namespace SwyxSharp.UserInterface
         {
             public string Name { get; set; }
             public string Status { get; set; }
-            public string Picutre { get; set; }
+            public string Picture { get; set; }
+            public SwyxEnums.SpeedDialState State { get; set; }
         }
 
         public List<Card>? Cards;
@@ -42,7 +45,8 @@ namespace SwyxSharp.UserInterface
                 {
                     Name = item.Name,
                     Status = item.State,
-                    Picutre = item.Picture
+                    Picture = item.Picture,
+                    State = item.SpeedDialState
                 });
             }
 
