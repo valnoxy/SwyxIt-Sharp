@@ -2,6 +2,7 @@
 using SwyxSharp.Common.Debugging;
 using System.IO;
 using System.Xml.Linq;
+using Path = System.IO.Path;
 
 namespace SwyxSharp.Common
 {
@@ -10,6 +11,10 @@ namespace SwyxSharp.Common
         private readonly ClientLineMgrClass? _lineManager;
         private readonly IClientConfig? _clientConfig;
         private SwyxEventsSink? _eventSink;
+
+        private int _selectedLineInt = 0;
+        private ClientLine _selectedLine;
+        private ClientLine[] _lines;
 
         public SwyxClient()
         {
@@ -22,13 +27,29 @@ namespace SwyxSharp.Common
 
                 // Get some infos
                 var serverId = _clientConfig.GetUniqueServerId();
-                var licence = _clientConfig.ServerLicenceType;
+                var license = _clientConfig.ServerLicenceType;
                 var server = _lineManager.DispGetCurrentServer;
-                Logging.Log($"Connected to Swyx Server: {server} | ID: {serverId} | License Type: {licence}");
-                
+                _lineManager.GetVersion(out var version);
+                Logging.Log($"Connected to Swyx Server: {server} | ID: {serverId} | License Type: {license}");
+                Logging.Log($"Client Version: {version.dwMajorVersion}.{version.dwMinorVersion}.{version.dwMinorVersion}");
+                if (license == 0) // SwyxIt! Trial
+                {
+                    _lineManager.GetTrialMode(out var trialMode, out var daysLeft);
+                    Logging.Log($"SwyxIt! Trial Server detected ({trialMode}) - {daysLeft} days left.", Logging.LogLevel.WARNING);
+                }
+
+                // Prepare lines
+                _selectedLine = (ClientLine)_lineManager.DispSelectedLine;
+                _lineManager.GetLineCount(out var lineCount);
+                _lines = new ClientLine[lineCount];
+                for (var i = 0; i < lineCount; i++)
+                {
+                    _lines[i] = (ClientLine)_lineManager.DispGetLine(i);
+                }
+
                 // Subscribe to events
                 _eventSink.Connect(_lineManager, OnLineManagerMessage);
-                
+
                 Logging.Log("Swyx Client API initialized!");
             }
             catch (Exception ex)
@@ -53,21 +74,62 @@ namespace SwyxSharp.Common
             Logging.Log("Swyx Client API shut down.");
         }
 
+        public void Test()
+        {
+            Logging.Log("Performing some tests ...", Logging.LogLevel.DEBUG);
+
+            // Analyze COM Object
+            var unknownObject = _clientConfig?.PbxPhoneBookEnumerator;
+            //var unknownObject = _lineManager.GetUserAppearances();
+            var comTypeName = Microsoft.VisualBasic.Information.TypeName(unknownObject);
+            Logging.Log($"COM Type name: {comTypeName}", Logging.LogLevel.DEBUG);
+
+            var data = (IDispCollection)unknownObject!;
+            var enumerator = data.GetEnumerator();
+            try
+            {
+                while (enumerator.MoveNext())
+                {
+                    var item = enumerator.Current;
+                }
+            }
+            finally
+            {
+                if (enumerator is IDisposable disposable)
+                {
+                    disposable.Dispose();
+                }
+            }
+        }
+
+
         #region Events
 
         // Events for UI updates
-        public event Action<string> UserStateChanged;
+        public event Action<string> UserStateChanged; // new state as string
+        public event Action<int> LineChanged; // line index
+        public event Action<int, int, ClientLine> LineStateChanged; // line index, new state, current client line
 
         // Event handler for line manager messages
         private void OnLineManagerMessage(SwyxEventsArgs e)
         {
+            if (_lineManager == null)
+            {
+                Logging.Log("Failed to get event: Line Manager is not initialized.");
+                return;
+            }
+            _selectedLine = (ClientLine)_lineManager.DispSelectedLine;
+
             var enumName = Enum.GetName(typeof(CLMgrMessage), e.Msg);
-            Logging.Log($"Event {enumName} -> [Msg: {e.Msg} - Param: {e.Param}]", Logging.LogLevel.DEBUG);
+            Logging.Log($"Event {enumName} -> [Param: {e.Param}]", Logging.LogLevel.DEBUG);
             switch (e.Msg)
             {
                 case CLMgrMessage.CLMgrLineStateChangedMessage:
                     break;
                 case CLMgrMessage.CLMgrLineSelectionChangedMessage:
+                    // dirty hack
+                    _selectedLineInt = e.Param;
+                    LineChanged?.Invoke(e.Param);
                     break;
                 case CLMgrMessage.CLMgrLineDetailsChangedMessage:
                     break;
@@ -123,6 +185,12 @@ namespace SwyxSharp.Common
                 case CLMgrMessage.CLMgrMicAdjustProceedMeter:
                     break;
                 case CLMgrMessage.CLMgrLineStateChangedMessageEx:
+                    var line = e.Param & 0xff;
+                    var high = e.Param >> 8;
+
+                    var newLineState = (LineState)high;
+                    Logging.Log($"Line {line} changed state to {newLineState}");
+                    LineStateChanged?.Invoke(line, high, _selectedLine);
                     break;
                 case CLMgrMessage.CLMgrPlaySoundFileDxProceedMeter:
                     break;
@@ -192,36 +260,8 @@ namespace SwyxSharp.Common
                     throw new ArgumentOutOfRangeException();
             }
         }
-        
+
         #endregion
-
-        public void Test()
-        {
-            Logging.Log("Performing some tests ...", Logging.LogLevel.DEBUG);
-
-            // Analyze COM Object
-            var unknownObject = _clientConfig?.PbxPhoneBookEnumerator;
-            //var unknownObject = _lineManager.GetUserAppearances();
-            var comTypeName = Microsoft.VisualBasic.Information.TypeName(unknownObject);
-            Logging.Log($"COM Type name: {comTypeName}", Logging.LogLevel.DEBUG);
-
-            var data = (IDispCollection)unknownObject!;
-            var enumerator = data.GetEnumerator();
-            try
-            {
-                while (enumerator.MoveNext())
-                {
-                    var item = enumerator.Current;
-                }
-            }
-            finally
-            {
-                if (enumerator is IDisposable disposable)
-                {
-                    disposable.Dispose();
-                }
-            }
-        }
 
         #region User Interface
         public List<SwyxEnums.SpeedDial> GetSpeedDials()
@@ -254,6 +294,92 @@ namespace SwyxSharp.Common
                 return;
             }
             UserInterface.OpenDialog(dialog, _lineManager);
+        }
+
+        #endregion
+
+        #region Calling
+
+        public void InitiateCall(string number)
+        {
+            if (_lineManager == null)
+            {
+                Logging.Log("ClientLineMgrClass is not initialized.", Logging.LogLevel.ERROR);
+                return;
+            }
+            Logging.Log($"Initiating call to {number} ...");
+
+            // See in what state the line is
+            var ls = (LineState)_selectedLine.DispState;
+            switch (ls)
+            {
+                case LineState.Inactive:
+                    _selectedLine.DispHookOff();
+                    _selectedLine.DispDial(number);
+                    break;
+
+                case LineState.HookOffInternal:
+                case LineState.HookOffExternal:
+                case LineState.Dialing:
+                case LineState.Alerting:
+                case LineState.Active:
+                case LineState.Ringing:
+                case LineState.Knocking:
+                case LineState.Busy:
+                case LineState.OnHold:
+                case LineState.ConferenceActive:
+                case LineState.ConferenceOnHold:
+                case LineState.Terminated:
+                case LineState.Transferring:
+                case LineState.Disabled:
+                    // find a new line
+                    var newLine = _lines.ToList().FindIndex(line => line.DispState == (int)LineState.Inactive);
+                    if (newLine != -1)
+                    {
+                        // inactive line found, put current line to hold and use the new line
+                        _lineManager.SimpleDial(number, newLine);
+                        break;
+                    }
+
+                    // no inactive line found, throw this call away
+                    Logging.Log("No inactive line found, throwing this call try away.");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        public void HoldCall()
+        {
+            if (_lineManager == null)
+            {
+                Logging.Log("ClientLineMgrClass is not initialized.", Logging.LogLevel.ERROR);
+                return;
+            }
+
+            var ls = (LineState)_selectedLine.DispState;
+            if (ls == LineState.OnHold)
+            {
+                Logging.Log("Reactivate current call ...");
+                _selectedLine.DispActivate();
+            }
+            else
+            {
+                Logging.Log("Holding current call ...");
+                _selectedLine.DispHold();
+            }
+        }
+
+
+        public void EndCall()
+        {
+            if (_lineManager == null)
+            {
+                Logging.Log("ClientLineMgrClass is not initialized.", Logging.LogLevel.ERROR);
+                return;
+            }
+            Logging.Log("Ending current call ...");
+            _selectedLine.DispHookOn();
         }
 
         #endregion
@@ -312,6 +438,7 @@ namespace SwyxSharp.Common
                     Logging.Log($"SpeedDial {i}: {name} - {number} - {state} | UserID: {userId} - SiteID: {siteId}", Logging.LogLevel.DEBUG);
                     speedDials.Add(new SwyxEnums.SpeedDial
                     {
+                        Id = i,
                         Name = name,
                         Number = number,
                         State = state,
@@ -325,20 +452,45 @@ namespace SwyxSharp.Common
                 return speedDials;
             }
 
+            internal static void GetMyself(ClientLineMgrClass client, IClientConfig clientConfig)
+            {
+                // new filthy, dirty hack -> get the user info from speed dials
+                var speedDials = new List<SwyxEnums.SpeedDial>();
+                client.PubGetNumberOfSpeedDials(out var a);
+                for (var i = 0; i <= a - 1; i++)
+                {
+                    client.PubGetSpeedDialName(i, out var name);
+                    client.PubGetSpeedDialNumber(i, out var number);
+                    client.PubGetSpeedDialState(i, out var stateId);
+                    client.GetUserIdByPhoneNumber(number, out var siteId, out var userId);
+
+                    if (name == client.DispGetCurrentUser) continue;
+                    Logging.Log($"Myself: {name} - {number} | UserID: {userId} - SiteID: {siteId}", Logging.LogLevel.DEBUG);
+                }
+            }
+
             private static string? GetAvatarFromCache(IClientConfig clientConfig, string orgFileName)
             {
-                var fileCache = clientConfig.FileCacheFolder;
-                var doc = XDocument.Load(Path.Combine(fileCache, "cache.xml"));
+                try
+                {
+                    var fileCache = clientConfig.FileCacheFolder;
+                    var doc = XDocument.Load(Path.Combine(fileCache, "cache.xml"));
 
-                var fileId = doc.Descendants("FileChacheEntry")
-                    .Where(x => (string)x.Element("m_Name") == orgFileName)
-                    .Select(x => (string)x.Element("m_FileID"))
-                    .FirstOrDefault();
+                    var fileId = doc.Descendants("FileChacheEntry") // Typo in original XML lol
+                        .Where(x => (string)x.Element("m_Name")! == orgFileName)
+                        .Select(x => (string)x.Element("m_FileID")!)
+                        .FirstOrDefault();
 
-                var cacheFile = $"{fileId}{Path.GetExtension(orgFileName)}";
-                var filePath = Path.Combine(fileCache, cacheFile);
+                    var cacheFile = $"{fileId}{Path.GetExtension(orgFileName)}";
+                    var filePath = Path.Combine(fileCache, cacheFile);
 
-                return filePath;
+                    return filePath;
+                }
+                catch (Exception ex)
+                {
+                    Logging.Log("Failed to fetch avatar from cache: " + ex);
+                    return null;
+                }
             }
         }
     }

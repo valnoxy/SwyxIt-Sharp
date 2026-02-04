@@ -17,7 +17,7 @@
             <ui:TextBlock FontTypography="Subtitle" FontWeight="Bold" Text="Kurzwahlen" Margin="0,0,0,10"/>
             <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
                 <ui:TextBox PlaceholderText="Suche" Icon="{ui:SymbolIcon Search24}" Grid.Column="0"/>
-                <ui:Button Icon="{ui:SymbolIcon Add24}" Content="Hinzufügen" Grid.Column="1" Margin="10,0,20,0" Height="36"/>
+                <ui:Button Icon="{ui:SymbolIcon Add24}" Content="Hinzufügen" Grid.Column="1" Margin="10,0,20,0" Height="36" Click="AddSpeedDial_Click"/>
                 <ui:Button Content="Alle" Grid.Column="2" Margin="0,0,5,0" Appearance="Primary" Height="36" Width="86"/>
                 <ui:Button Content="Verfügbar" Grid.Column="3" Height="36" Width="86"/>
                 <ui:Button Icon="{ui:SymbolIcon Bug24}" Click="DebugLoad" Grid.Column="4" Margin="10,0,0,0" Height="36" Appearance="Danger"/>
@@ -39,7 +39,7 @@
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <ui:Card Padding="12" Margin="4">
+                        <ui:Card Padding="12" Margin="4" MouseDown="SpeedDial_MouseDown">
                             <Grid ColumnDefinitions="Auto,Auto,*" Height="60">
                                 <Grid Grid.Column="0" 
                                       Width="60" 
@@ -69,7 +69,7 @@
                                     <TextBlock Text="{Binding Status}"/>
                                 </StackPanel>
                                 <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon Symbol=MoreVertical24}" Padding="0" 
-                                           FontSize="18" VerticalAlignment="Top" HorizontalAlignment="Right"/>
+                                           FontSize="18" VerticalAlignment="Top" HorizontalAlignment="Right" Click="EditSpeedDial_Click"/>
                             </Grid>
                         </ui:Card>
                     </DataTemplate>

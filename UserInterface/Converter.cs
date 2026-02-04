@@ -2,7 +2,6 @@
 using System.Windows.Data;
 using System.Windows.Media;
 using static SwyxSharp.Common.SwyxEnums;
-using Brushes = System.Drawing.Brushes;
 
 namespace SwyxSharp.UserInterface
 {
@@ -11,7 +10,7 @@ namespace SwyxSharp.UserInterface
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is not (double actualWidth and > 0)) return 1;
-            
+
             const double minWidth = 270; // 260px + Margin/Padding
             var columns = (int)Math.Max(1, Math.Floor(actualWidth / minWidth));
             return columns;

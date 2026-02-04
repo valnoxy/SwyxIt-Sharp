@@ -1,4 +1,5 @@
-﻿using IpPbx.CLMgrLib;
+using System.Diagnostics.CodeAnalysis;
+using IpPbx.CLMgrLib;
 
 namespace SwyxSharp.Common
 {
@@ -51,20 +52,21 @@ namespace SwyxSharp.Common
         }
     }
 
+    [SuppressMessage("ReSharper", "InconsistentNaming")]
     public enum CLMgrMessage
     {
         CLMgrLineStateChangedMessage            = 0,   // state of at least one line has changed
         CLMgrLineSelectionChangedMessage        = 1,   // line in focus has changed
         CLMgrLineDetailsChangedMessage          = 2,   // details of at least one line have changed
         CLMgrUserDataChangedMessage             = 3,   // 
-        CLMgrCallDetailsMessage                 = 4,   // details of last call are available, post mortem for logging purpose
+        CLMgrCallDetailsMessage                 = 4,   // details of last call are available, post-mortem for logging purpose
         CLMgrServerDownMessage                  = 5,   // server goes down, keep line manager, wait for ServerUp message
-        CLMgrServerUpMessage                    = 6,   // server is up again, keep interfaces to line manger
+        CLMgrServerUpMessage                    = 6,   // server is up again, keep interfaces to line manager
         CLMgrWaveDeviceChanged                  = 7,   // speaker / micro has been switched on / off
         CLMgrGroupCallNotificationMessage       = 8,   // notification about group call
         CLMgrNameKeyStateChangedMessage         = 9,   // 
         CLMgrNumberOfLinesChangedMessage        = 10,  // the number of lines has changed
-        CLMgrClientShutDownRequest              = 11,  // Client Line Manager requests client to shutdown and release all interfaces
+        CLMgrClientShutDownRequest              = 11,  // Client Line Manager requests client to shut down and release all interfaces
         CLMgrPowerSuspendMessage                = 12,  // 
         CLMgrPowerResumeMessage                 = 13,  // 
         CLMgrHandsetStateChangedMessage         = 14,  // 
@@ -84,13 +86,13 @@ namespace SwyxSharp.Common
         CLMgrLineStateChangedMessageEx          = 28,  // state of certain line has changed, lParam: LOWORD: line index of line that changed its state (starting with 0) HIWORD: new state of this line
         CLMgrPlaySoundFileDxProceedMeter        = 29,  // 
         CLMgrSIPRegistrationStateChanged        = 30,  // registration state of SIP account has changed
-                                                       // lParam: LOBYTE: Account index
-                                                       //         HIBYTE: new state
+                                                       //   lParam: LOBYTE: Account index
+                                                       //           HIBYTE: new state
         CLMgrWaveFilePlayed                     = 31,  // wave file playback finished
-                                                       // lParam: line index;
-                                                       // if -1, the message is related to a LineMgr function PlaySoundFile or PlayToRtp
-                                                       // if >=0 the message is related to a line function PlaySoundFile of line with this index
-        CLMgrFirstDataReceived                  = 32,  // first RTP data received on line, might be silence
+                                                       //   lParam: line index;
+                                                       //   if -1, the message is related to a LineMgr function PlaySoundFile or PlayToRtp
+                                                       //   if >=0 the message is related to a line function PlaySoundFile of line with this index
+        CLMgrFirstDataReceived                  = 32,  // first RTP data received on-line, might be silence
                                                        // lParam: line index;
         CLMgrRegisteredSipDeviceListChanged     = 33,  // 
         CLMgrDialerStartCallResult              = 34,  // 
@@ -125,8 +127,8 @@ namespace SwyxSharp.Common
     public enum LineState
     {
         Inactive = 0,                        // line is inactive
-        HookOffInternal = 1,                 // off hook, internal dialtone
-        HookOffExternal = 2,                 // off hook, external dialtone
+        HookOffInternal = 1,                 // off hook, internal dial tone
+        HookOffExternal = 2,                 // off hook, external dial tone
         Ringing = 3,                         // incoming call, ringing
         Dialing = 4,                         // outgoing call, we are dialing, no sound
         Alerting = 5,                        // outgoing call, alerting = ringing on destination
@@ -135,7 +137,7 @@ namespace SwyxSharp.Common
         Active = 8,                          // incoming / outgoing call, logical and physical connection is established
         OnHold = 9,                          // incoming / outgoing call, logical connection is established, destination gets music on hold
         ConferenceActive = 10,               // incoming / outgoing conference, logical and physical connection is established
-        ConferenceOnHold = 11,               // incoming / outgoing conference, logical connection is established, not physcically connected
+        ConferenceOnHold = 11,               // incoming / outgoing conference, logical connection is established, not physically connected
         Terminated = 12,                     // incoming / outgoing connection / call has been disconnected
         Transferring = 13,                   // special LSOnHold, call is awaiting to be transferred, peer gets special music on hold
         Disabled = 14                        // special LSInactive: wrap up time

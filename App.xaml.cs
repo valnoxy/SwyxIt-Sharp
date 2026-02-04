@@ -1,5 +1,5 @@
-﻿using System.Windows;
-using SwyxSharp.Common.Debugging;
+﻿using SwyxSharp.Common.Debugging;
+using System.Windows;
 
 namespace SwyxSharp
 {
