@@ -64,13 +64,13 @@
         </StackPanel>
 
         <StackPanel Margin="0,30,0,0" Grid.Row="2">
-            <ui:Card Padding="0">
+            <ui:Card Padding="0" Visibility="Visible" x:Name="CallCard">
                 <Grid RowDefinitions="*,*,*,*">
                     <!-- Title -->
                     <Border Grid.Row="0" Background="#bc99d6" CornerRadius="3,3,0,0">
                         <Grid>
                             <ui:TextBlock Text="Leitung 1" Foreground="Black" HorizontalAlignment="Left" Padding="8,8,0,8"/>
-                            <ui:TextBlock Text="00:00" Foreground="Black" HorizontalAlignment="Right" Padding="0,8,8,8"/>
+                            <ui:TextBlock Text="{Binding TimePassed}" Foreground="Black" HorizontalAlignment="Right" Padding="0,8,8,8"/>
                         </Grid>
                     </Border>
 
@@ -121,8 +121,8 @@
 
                     <!-- Hold & End Call -->
                     <Grid Grid.Row="3" Margin="0,15,0,10" Grid.ColumnDefinitions="*,*">
-                        <ui:Button Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" Width="50" Margin="0,0,10,5" Icon="{ui:SymbolIcon Pause24}" FontSize="24" Click="HoldCall_Click"/>
-                        <ui:Button Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" Width="50" Margin="10,0,0,5" Icon="{ui:SymbolIcon CallEnd24}" FontSize="24" Appearance="Danger" Click="EndCall_Click"/>
+                        <ui:Button Grid.Row="0" Grid.Column="0" HorizontalAlignment="Right" Width="50" Margin="0,0,10,5" Icon="{ui:SymbolIcon Pause24}" Height="40" FontSize="24" Click="HoldCall_Click" x:Name="HoldCallBtn"/>
+                        <ui:Button Grid.Row="0" Grid.Column="1" HorizontalAlignment="Left" Width="50" Margin="10,0,0,5" Icon="{ui:SymbolIcon CallEnd24}" Height="40" FontSize="24" Appearance="Danger" Click="EndCall_Click"/>
                     </Grid>
                 </Grid>
             </ui:Card>

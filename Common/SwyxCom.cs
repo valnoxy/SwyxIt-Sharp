@@ -1,6 +1,7 @@
 ﻿using IpPbx.CLMgrLib;
 using SwyxSharp.Common.Debugging;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using Path = System.IO.Path;
 
@@ -347,6 +348,59 @@ namespace SwyxSharp.Common
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+        }
+
+        public List<LineState>? GetAllLineStatus()
+        {
+            if (_lineManager == null)
+            {
+                Logging.Log("ClientLineMgrClass is not initialized.", Logging.LogLevel.ERROR);
+                return null;
+            }
+            Logging.Log("Fetching all line status ...");
+
+            var list = new List<LineState>();
+            foreach (var line in _lines)
+            {
+                var ls = (LineState)line.DispState;
+                Logging.Log($"Line {_lines.ToList().IndexOf(line)}: {ls}", Logging.LogLevel.DEBUG);
+                list.Add(ls);
+            }
+
+            return list;
+        }
+
+        public ClientLine? ReportCurrentCall()
+        {
+            if (_lineManager == null)
+            {
+                Logging.Log("ClientLineMgrClass is not initialized.", Logging.LogLevel.ERROR);
+                return null;
+            }
+
+            try
+            {
+                _lineManager.GetLineCount(out var lineCount);
+
+                if (lineCount == 0) return null;
+
+                var currentLine = (ClientLine)_lineManager.DispGetLine(0);
+                if (currentLine != null)
+                {
+                    return currentLine;
+                }
+                Marshal.ReleaseComObject(currentLine!);
+            }
+            catch (COMException ex)
+            {
+                Logging.Log($"Failed to get call details: {ex.Message}", Logging.LogLevel.ERROR);
+            }
+            catch (Exception ex)
+            {
+                Logging.Log($"An unknown error has occurred: {ex.Message}", Logging.LogLevel.ERROR);
+            }
+
+            return null;
         }
 
         public void HoldCall()
